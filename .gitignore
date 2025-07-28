@@ -31,5 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
 
-storage
+# storage -> this will ignore all the storage folder
+# /storage | path/storage will ignore only specific
+/storage
 /config
