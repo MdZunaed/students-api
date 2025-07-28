@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -15,7 +16,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func New(storage storage.Storage) http.HandlerFunc {
+func CreateNewStudent(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var student types.Student
 		err := json.NewDecoder(r.Body).Decode(&student)
@@ -61,7 +62,7 @@ func GetStudents(storage storage.Storage) http.HandlerFunc {
 	}
 }
 
-func GetById(storage storage.Storage) http.HandlerFunc {
+func GetStudentById(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		slog.Info("getting a student", slog.String("id", id))
@@ -79,5 +80,32 @@ func GetById(storage storage.Storage) http.HandlerFunc {
 			return
 		}
 		response.WriteJson(w, http.StatusOK, student)
+	}
+}
+
+func DeleteStudentById(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		slog.Info("deleting a student", slog.String("id", id))
+
+		intId, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			slog.Error("error parsing id", slog.String("id", id))
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		err = storage.DeleteStudentById(intId)
+		if err != nil {
+			if err.Error() == "not found" {
+				response.WriteJson(w, http.StatusNotFound, response.GeneralError(fmt.Errorf("student not found")))
+				return
+			}
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		err = response.WriteJson(w, http.StatusOK, map[string]any{"success": true})
+		if err != nil {
+			log.Println("Failed to write JSON:", err)
+		}
 	}
 }

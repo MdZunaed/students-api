@@ -14,7 +14,7 @@ import (
 	"github.com/MdZunaed/students-api/internal/http/handlers/student"
 	"github.com/MdZunaed/students-api/internal/storage/sqlite"
 )
-
+// start server: go run cmd/students-api/main.go -config config/local.yaml
 func main() {
 	// Load config
 	cfg := config.MustLoad()
@@ -26,13 +26,15 @@ func main() {
 		log.Fatal(err)
 	}
 	slog.Info("Storage initialized", slog.String("env", cfg.Env), slog.String("version", "1.0.0"))
+
 	// Setup router
 
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /api/students", student.GetStudents(storage))
-	router.HandleFunc("GET /api/students/{id}", student.GetById(storage))
-	router.HandleFunc("POST /api/students", student.New(storage))
+	router.HandleFunc("GET /api/students/{id}", student.GetStudentById(storage))
+	router.HandleFunc("POST /api/students", student.CreateNewStudent(storage))
+	router.HandleFunc("DELETE /api/students/{id}", student.DeleteStudentById(storage))
 
 	// Setup server
 
