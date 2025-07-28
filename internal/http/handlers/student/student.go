@@ -8,17 +8,12 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
 	"github.com/MdZunaed/students-api/internal/storage"
 	"github.com/MdZunaed/students-api/internal/types"
 	"github.com/MdZunaed/students-api/internal/utils/response"
 	"github.com/go-playground/validator/v10"
 )
-
-func Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to Students api"))
-	}
-}
 
 func New(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -54,22 +49,34 @@ func New(storage storage.Storage) http.HandlerFunc {
 	}
 }
 
+func GetStudents(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("getting all students")
+		students, err := storage.GetStudents()
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		response.WriteJson(w, http.StatusOK, students)
+	}
+}
+
 func GetById(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id:= r.PathValue("id")
+		id := r.PathValue("id")
 		slog.Info("getting a student", slog.String("id", id))
 
-		intId, err:= strconv.ParseInt(id, 10, 64)
+		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			slog.Error("error parsing id", slog.String("id", id))
 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
-			return 
+			return
 		}
-		student, err:= storage.GetStudentById(intId)
+		student, err := storage.GetStudentById(intId)
 		if err != nil {
 			slog.Error("error getting user", slog.String("id", id))
 			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
-			return 
+			return
 		}
 		response.WriteJson(w, http.StatusOK, student)
 	}
