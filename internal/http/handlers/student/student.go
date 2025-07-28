@@ -16,6 +16,39 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+func GetStudents(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("getting all students")
+		students, err := storage.GetStudents()
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		response.WriteJson(w, http.StatusOK, students)
+	}
+}
+
+func GetStudentById(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		slog.Info("getting a student", slog.String("id", id))
+
+		intId, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			slog.Error("error parsing id", slog.String("id", id))
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		student, err := storage.GetStudentById(intId)
+		if err != nil {
+			slog.Error("error getting user", slog.String("id", id))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+		response.WriteJson(w, http.StatusOK, student)
+	}
+}
+
 func CreateNewStudent(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var student types.Student
@@ -50,36 +83,35 @@ func CreateNewStudent(storage storage.Storage) http.HandlerFunc {
 	}
 }
 
-func GetStudents(storage storage.Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		slog.Info("getting all students")
-		students, err := storage.GetStudents()
-		if err != nil {
-			response.WriteJson(w, http.StatusInternalServerError, err)
-			return
-		}
-		response.WriteJson(w, http.StatusOK, students)
-	}
-}
-
-func GetStudentById(storage storage.Storage) http.HandlerFunc {
+func UpdateStudent(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		slog.Info("getting a student", slog.String("id", id))
-
 		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			slog.Error("error parsing id", slog.String("id", id))
 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
-		student, err := storage.GetStudentById(intId)
-		if err != nil {
-			slog.Error("error getting user", slog.String("id", id))
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+		var student types.Student
+		err = json.NewDecoder(r.Body).Decode(&student)
+		if errors.Is(err, io.EOF) {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
 			return
 		}
-		response.WriteJson(w, http.StatusOK, student)
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		newStudent, err := storage.UpdateStudent(student.Name, student.Email, student.Age, intId)
+		if err != nil {
+			if err.Error() == "not found" {
+				response.WriteJson(w, http.StatusNotFound, response.GeneralError(fmt.Errorf("student not found")))
+				return
+			}
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		response.WriteJson(w, http.StatusOK, newStudent)
 	}
 }
 
