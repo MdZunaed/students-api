@@ -108,7 +108,25 @@ func (s *Sqlite) CreateStudent(name string, email string, age int) (int64, error
 	return lstId, nil
 }
 
-func (s *Sqlite) UpdateStudent(name string, email string, age int, id int64) (types.Student, error) {
+/// Safe update, will update single field too
+func (s *Sqlite) UpdateStudent(name *string, email *string, age *int, id int64) (*types.Student, error) {
+	var student types.Student
+	err := s.Db.QueryRow("SELECT id, name, email, age FROM students WHERE id = ?", id).
+		Scan(&student.Id, &student.Name, &student.Email, &student.Age)
+	log.Printf("student after fetch, name:%s, email:%s, age:%d", student.Name, student.Email, student.Age)
+	if err != nil {
+		return nil, fmt.Errorf("student not found")
+	}
+	// Override only the non-nil fields
+	if name != nil {
+		student.Name = *name
+	}
+	if email != nil {
+		student.Email = *email
+	}
+	if age != nil {
+		student.Age = *age
+	}
 	stmt, err := s.Db.Prepare(`
 		UPDATE students
 	 	SET name = ?, email = ?, age = ?
@@ -116,29 +134,56 @@ func (s *Sqlite) UpdateStudent(name string, email string, age int, id int64) (ty
 	`)
 	if err != nil {
 		log.Printf("Prepare error: %v\n", err)
-		return types.Student{}, err
+		return nil, err
 	}
 	defer stmt.Close()
-	result, err := stmt.Exec(name, email, age, id)
+	result, err := stmt.Exec(student.Name, student.Email, student.Age, id)
 	if err != nil {
 		log.Printf("Exec error: %v\n", err)
-		return types.Student{}, err
+		return nil, err
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return types.Student{}, err
+		return nil, err
 	}
 	if rowsAffected == 0 {
-		return types.Student{}, fmt.Errorf("not found")
+		return nil, fmt.Errorf("not found")
 	}
-	var student types.Student
-	err = s.Db.QueryRow("SELECT id, name, email, age FROM students WHERE id = ?", id).
-		Scan(&student.Id, &student.Name, &student.Email, &student.Age)
-	if err != nil {
-		return types.Student{}, err
-	}
-	return student, nil
+	return &student, nil
 }
+
+/// Update whole data, will wipe data if full data not given
+// func (s *Sqlite) UpdateStudent(name string, email string, age int, id int64) (types.Student, error) {
+// 	stmt, err := s.Db.Prepare(`
+// 		UPDATE students
+// 	 	SET name = ?, email = ?, age = ?
+// 	 	WHERE id = ?
+// 	`)
+// 	if err != nil {
+// 		log.Printf("Prepare error: %v\n", err)
+// 		return types.Student{}, err
+// 	}
+// 	defer stmt.Close()
+// 	result, err := stmt.Exec(name, email, age, id)
+// 	if err != nil {
+// 		log.Printf("Exec error: %v\n", err)
+// 		return types.Student{}, err
+// 	}
+// 	rowsAffected, err := result.RowsAffected()
+// 	if err != nil {
+// 		return types.Student{}, err
+// 	}
+// 	if rowsAffected == 0 {
+// 		return types.Student{}, fmt.Errorf("not found")
+// 	}
+// 	var student types.Student
+// 	err = s.Db.QueryRow("SELECT id, name, email, age FROM students WHERE id = ?", id).
+// 		Scan(&student.Id, &student.Name, &student.Email, &student.Age)
+// 	if err != nil {
+// 		return types.Student{}, err
+// 	}
+// 	return student, nil
+// }
 
 func (s *Sqlite) DeleteStudentById(id int64) error {
 	stmt, err := s.Db.Prepare("DELETE FROM students WHERE id = ?")

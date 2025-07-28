@@ -92,7 +92,7 @@ func UpdateStudent(storage storage.Storage) http.HandlerFunc {
 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
-		var student types.Student
+		var student types.StudentUpdate
 		err = json.NewDecoder(r.Body).Decode(&student)
 		if errors.Is(err, io.EOF) {
 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
@@ -111,7 +111,7 @@ func UpdateStudent(storage storage.Storage) http.HandlerFunc {
 			response.WriteJson(w, http.StatusInternalServerError, err)
 			return
 		}
-		response.WriteJson(w, http.StatusOK, newStudent)
+		response.WriteJson(w, http.StatusOK, &newStudent)
 	}
 }
 
