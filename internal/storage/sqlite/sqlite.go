@@ -108,14 +108,14 @@ func (s *Sqlite) CreateStudent(name string, email string, age int) (int64, error
 	return lstId, nil
 }
 
-/// Safe update, will update single field too
+// / Safe update, will update single field too
 func (s *Sqlite) UpdateStudent(name *string, email *string, age *int, id int64) (*types.Student, error) {
 	var student types.Student
 	err := s.Db.QueryRow("SELECT id, name, email, age FROM students WHERE id = ?", id).
 		Scan(&student.Id, &student.Name, &student.Email, &student.Age)
 	log.Printf("student after fetch, name:%s, email:%s, age:%d", student.Name, student.Email, student.Age)
 	if err != nil {
-		return nil, fmt.Errorf("student not found")
+		return nil, fmt.Errorf("not found")
 	}
 	// Override only the non-nil fields
 	if name != nil {
